@@ -1,36 +1,141 @@
-用go的http库能对`http://www.baidu.com`成功的发起请求
+---
+typora-root-url: pic
+---
+
+
+
+
+
+
+
+
+
+
+
+tcp服务端
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"net"
+)
+
+func main() {
+	listen, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("server started")
+	for {
+		conn, err := listen.Accept()
+		if err != nil {
+			fmt.Println("accept failed,err:", err)
+			continue
+		}
+		fmt.Println("server accept new connection")
+		// 处理函数
+		go handler(conn)
+	}
+}
+
+func handler(conn net.Conn) {
+	defer conn.Close()
+	for {
+		reader := bufio.NewReader(conn)
+		var buf [128]byte
+		n, err := reader.Read(buf[:]) // 读取数据
+		if err != nil {
+			fmt.Println("read from client failed, err:", err)
+			break
+		}
+		recvStr := string(buf[:n])
+		fmt.Println("收到client发来的消息:", recvStr)
+		// 发送数据
+		conn.Write([]byte("your message is" + recvStr))
+	}
+}
+
+```
+
+
+
+tcp客户端 
 
 ```GO
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"io/ioutil"
-	"net/http"
+	"net"
+	"os"
+	"strings"
 )
 
 func main() {
-	resp, err := http.Get("http://www.baidu.com")
+	conn, err := net.Dial("tcp", "xxx.xxx.xxx.xxx:8080")
 	if err != nil {
 		panic(err)
 	}
-	defer resp.Body.Close()
+	fmt.Println("client connected")
 
-	c, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return
+	inputReader := bufio.NewReader(os.Stdin)
+	for {
+		// 读取终端输入
+		input, _ := inputReader.ReadString('\n')
+		inputInfo := strings.Trim(input, "\r\n")
+		if strings.ToUpper(inputInfo) == "Q" { // 如果输入q就退出
+			// 关闭连接
+			conn.Close()
+			return
+		}
+		// 发送数据
+		_, err = conn.Write([]byte(input))
+		if err != nil {
+			return
+		}
+		buf := [512]byte{}
+		// 读取服务端发来的数据
+		n, err := conn.Read(buf[:])
+		if err != nil {
+			fmt.Println("recv failed, err:", err)
+			return
+		}
+		fmt.Println("收到server发来的消息:" + string(buf[:n]))
 	}
-
-	fmt.Println(string(c))
 }
 
 ```
 
-众所周知，HTTP是基于TCP的应用层协议。
+
+
+![](/gotcp代码运行效果.png)
+
+- 1：服务端监听端口
+- 2：客户端发起对服务端的TCP连接
+- 3：服务端与客户端成功建立连接
+- 4：客户端向服务端发送数据
+- 5：服务端向客户端发送数据
+- 6：客户端向服务端断开连接
+
+
 
 应用层往下的协议是操作系统提供的。
 
 http库调用了系统调用来使用操作系统提供的网络功能
+
+
+
+从代码开始，到抓包结束
+
+Socket
+
+
+
+
 
 
 
@@ -44,10 +149,48 @@ tcp的拥塞控制
 
 
 
+
+
 tcp包头
 
-- 端口
-  - 源端口
+![](/tcp包头截图.png)
+
+
+
+![](/tcp包头格式.png)
+
+c462 1f90 360a1d03 00000000 8002 faf0 4cc0 0000 020405b40103030801010402
+
+
+
+源端口号（16位） c462 
+
+目标端口号（16位） 1f90 
+
+序号（32位） 360a1d03 
+
+确认序号（32位 00000000 
+
+首部长度（4位） 80
+
+02 
+
+窗口大小（16位） faf0 
+
+校验和（16位） 4cc0 
+
+紧急指针（16位） 0000 
+
+选项 020405b40103030801010402
+
+数据
+
+
+
+可以分为几个部分
+
+- Port 端口
+  - 源端口 （）
   - 目标端口
 - 序号
   - 序号
@@ -73,15 +216,11 @@ tcp包头
 
 
 
-
-
 为什么一定要建立连接？
 
-机器A给机器B发送tcp包，那它们之间得建立一个连接。为什么非要建立连接呢？
+机器A想对机器B发起一次HTTP请求，HTTP是基于TCP的，那它们之间得建立一个TCP连接。为什么非要建立连接，直接发不行吗？
 
-tcp是可靠的协议，但是这个可靠是tcp这一层通过序号与确认序号自己做到的。那它们至少得初始化一个序号。 
-
-
+tcp是可靠的协议，但是这个可靠是tcp这一层通过序号与确认序号自己做到的。A对B的HTTP请求，
 
 三次握手
 
