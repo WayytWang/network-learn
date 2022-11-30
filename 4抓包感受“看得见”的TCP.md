@@ -1,27 +1,9 @@
 ---
 typora-root-url: pic
-
 ---
 
 
 
-从代码入手看看TCP协议如何用
-
-抓包分析分析TCP有啥神奇之处
-
-
-
-Go写网络服务的优势在哪里？
-
-
-
-大纲：
-
-go tcp代码
-
-抓包分析过程
-
-go的网络io模型
 
 
 
@@ -213,7 +195,7 @@ func main() {
 		// 读取终端输入
 		input, _ := inputReader.ReadString('\n')
 		inputInfo := strings.Trim(input, "\r\n")
-    // 如果输入q就退出
+    	// 如果输入q就退出
 		if strings.ToUpper(inputInfo) == "Q" { 
 			// 关闭连接
 			conn.Close()
@@ -405,25 +387,3 @@ tcp包头
 - 窗口大小
 
 
-
-
-
-
-
-
-
-
-
-## Go的IO模型
-
-又回到go
-
-1.tcp的三次握手与四次挥手
-
-
-
-
-
-2.操作系统层面的事情
-
-3.go语言发出请求
